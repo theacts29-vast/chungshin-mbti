@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>충신교회 영아부 MBTI 대시보드</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#FDFAF6;color:#2D2A24;padding-bottom:60px}
+.navbar{background:#fff;border-bottom:1px solid #EDE8DF;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-title{font-size:15px;font-weight:700;letter-spacing:1px}
+.nav-sub{font-size:11px;color:#8C7F6E;margin-top:2px}
+.live{display:flex;align-items:center;gap:5px;font-size:11px;color:#3A7A55}
+.dot{width:7px;height:7px;border-radius:50%;background:#3A7A55;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-btn{padding:6px 13px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700}
+.hero{background:linear-gradient(135deg,#3A5A8A,#5A3A7A);color:#fff;padding:36px 24px 32px;text-align:center}
+.hero-church{font-size:12px;letter-spacing:3px;opacity:.65;margin-bottom:6px}
+.hero-workshop{font-size:19px;font-weight:900;letter-spacing:2px;margin-bottom:14px}
+.hero-title{font-size:28px;font-weight:900;line-height:1.35;margin-bottom:8px}
+.hero-desc{font-size:13px;opacity:.82;line-height:1.85;max-width:380px;margin:0 auto 22px}
+.hero-divider{width:100%;max-width:460px;height:1px;background:rgba(255,255,255,.2);margin:0 auto 20px}
+.verse-box{background:rgba(255,255,255,.1);border-radius:11px;padding:14px 18px;text-align:left;max-width:520px;margin:0 auto 12px}
+.verse-ref{font-size:10px;letter-spacing:2px;opacity:.6;margin-bottom:7px}
+.verse-text{font-size:12px;line-height:1.9;opacity:.92;font-style:italic}
+.selector{padding:13px 16px 0;overflow-x:auto}
+.sel-row{display:flex;gap:7px;flex-wrap:wrap;padding-bottom:4px}
+.sel-btn{padding:7px 14px;border-radius:20px;font-size:13px;cursor:pointer;white-space:nowrap;transition:all .15s;font-family:inherit}
+.section{padding:14px 16px 0}
+.card{background:#fff;border-radius:14px;border:1px solid #EDE8DF;padding:18px 18px;margin-bottom:12px}
+.card-label{font-size:10px;font-weight:700;letter-spacing:2px;color:#8C7F6E;margin-bottom:12px;text-transform:uppercase}
+.divider{height:1px;background:#EDE8DF;margin:12px 0}
+.ibox{border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:10px}
+.ibox-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;margin-bottom:5px}
+.ibox-txt{font-size:13px;line-height:1.8;color:#2D2A24}
+.bar-row{margin-bottom:13px}
+.bar-labels{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.bar-track{height:10px;border-radius:5px;overflow:hidden;display:flex;background:#F5F0E8}
+.member-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.m-card{background:#FDFAF6;border-radius:10px;padding:10px 11px;cursor:pointer;transition:border-color .15s}
+.type-grid{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:11px;border-radius:20px;padding:3px 10px}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div>
+    <div class="nav-title">영아부 MBTI 대시보드</div>
+    <div class="nav-sub">우리 선생님들을 더 깊이 알아가는 시간</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="live"><div class="dot"></div>LIVE</div>
+    <div id="count-badge" style="background:#F5F0E8;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700">0/20명</div>
+    <button class="nav-btn" id="page-btn" onclick="togglePage()" style="background:#4A6FA5;color:#fff">결과 보기 →</button>
+    <button class="nav-btn" onclick="loadData()" style="background:transparent;border:1px solid #EDE8DF;color:#8C7F6E">↻</button>
+  </div>
+</div>
+
+<div id="app"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyALni3o_sDEz3BxEOQcf62GyyoqG3UvHvI",
+  authDomain: "choongshinchurch2026.firebaseapp.com",
+  databaseURL: "https://choongshinchurch2026-default-rtdb.firebaseio.com",
+  projectId: "choongshinchurch2026",
+  storageBucket: "choongshinchurch2026.firebasestorage.app",
+  messagingSenderId: "1168507470",
+  appId: "1:1168507470:web:7e5e12e0e61579d52e791f"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
+const TEAM_SIZE = 20;
+
+const MBTI_INFO = {
+  INTJ:{name:"비전 설계자",emoji:"🔭",color:"#6B46C1",group:"탐구형",summary:"조용하지만 깊은 통찰로 팀을 이끄는 선생님입니다.",gift:"큰 그림을 그리고 방향을 잡는 데 탁월합니다. 영아부의 장기적인 섬김 방향과 교육 체계를 설계하는 데 귀한 은사를 발휘합니다.",serve:"혼자 생각하고 준비하는 시간이 충분할 때 가장 빛납니다. 아이들을 위한 커리큘럼이나 행사 기획을 맡으면 팀 전체가 혜택을 누립니다.",grow:"마음의 따뜻함을 표현하는 데 익숙하지 않을 수 있습니다. 함께 사역하는 선생님들에게 '감사해요', '잘 하셨어요' 같은 말 한마디가 공동체를 더 풍성하게 합니다.",together:"ESFJ·ENFJ처럼 사람을 잘 돌보는 선생님과 함께하면 비전과 온기가 균형을 이루는 아름다운 팀이 됩니다."},
+  INTP:{name:"깊이 묻는 사람",emoji:"🔬",color:"#553C9A",group:"탐구형",summary:"당연한 것도 한 번 더 생각하는 선생님입니다.",gift:"아이들의 '왜요?'에 진지하게 답할 준비가 되어 있습니다. 새로운 교육 방식이나 더 나은 섬김의 방법을 찾아내는 데 강점이 있습니다.",serve:"정답보다 '더 좋은 질문'을 찾는 분입니다. 팀 회의에서 '이 방법이 정말 최선일까요?' 하고 물어봐 줄 때 팀 전체가 성장합니다.",grow:"결론 내기를 오래 미루는 경향이 있습니다. 작은 일부터 '일단 해보기'를 연습하면 은사가 더 크게 쓰임받습니다.",together:"ENTJ·ESTJ처럼 실행력이 강한 선생님과 짝을 이루면 아이디어가 현실이 됩니다."},
+  ENTJ:{name:"추진하는 리더",emoji:"⚡",color:"#C05621",group:"탐구형",summary:"에너지와 결단력으로 팀을 앞으로 나아가게 하는 선생님입니다.",gift:"목표를 세우고 팀을 이끄는 능력이 탁월합니다.",serve:"흐릿한 상황을 명확하게 만들어 줍니다.",grow:"빠른 추진력이 때로 동료를 지치게 할 수 있습니다.",together:"INFP·ISFP처럼 사람 마음을 잘 헤아리는 선생님과 함께하면 추진력에 온기가 더해집니다."},
+  ENTP:{name:"아이디어 샘",emoji:"💡",color:"#D69E2E",group:"탐구형",summary:"새로운 생각이 끊임없이 솟아나는 선생님입니다.",gift:"아이들이 즐거워할 창의적인 활동과 접근 방식을 잘 떠올립니다.",serve:"틀을 깨는 아이디어로 영아부에 활기를 줍니다.",grow:"아이디어는 많지만 마무리가 아쉬울 때가 있습니다.",together:"ISTJ·ISFJ처럼 꼼꼼하게 실행하는 선생님과 함께하면 아이디어가 현실로 꽃핍니다."},
+  INFJ:{name:"조용한 비전가",emoji:"🌱",color:"#276749",group:"관계형",summary:"말 없이도 깊은 돌봄으로 아이들과 동료를 섬기는 선생님입니다.",gift:"아이들 한 명 한 명의 필요를 누구보다 먼저 알아챕니다.",serve:"표면 아래를 보는 눈이 있습니다.",grow:"모든 것을 혼자 감당하려는 경향이 있습니다.",together:"ENFP·ENTP처럼 에너지가 넘치는 선생님과 함께하면 비전에 생동감이 더해집니다."},
+  INFP:{name:"마음을 보는 사람",emoji:"🎨",color:"#6B46C1",group:"관계형",summary:"가치와 진심으로 사역에 임하는 따뜻한 선생님입니다.",gift:"아이들의 감정을 세심하게 읽고 공감합니다.",serve:"진심 어린 격려 한마디가 팀원들에게 큰 힘이 됩니다.",grow:"비판이나 갈등 앞에서 많이 상처받을 수 있습니다.",together:"ESTJ·ENTJ처럼 결단력 있는 선생님과 함께하면 따뜻한 마음이 구체적인 섬김으로 이어집니다."},
+  ENFJ:{name:"사람을 세우는 리더",emoji:"🌟",color:"#B7791F",group:"관계형",summary:"팀원 한 명 한 명의 가능성을 보고 응원하는 선생님입니다.",gift:"사람들이 최선을 발휘하도록 격려하는 능력이 탁월합니다.",serve:"누구보다 먼저 팀원을 배려하고 챙깁니다.",grow:"타인을 위해 너무 많은 에너지를 쏟다 보면 본인이 지칠 수 있습니다.",together:"INTJ·INTP처럼 깊이 생각하는 선생님과 함께하면 따뜻함에 지혜가 더해집니다."},
+  ENFP:{name:"활력을 나누는 사람",emoji:"🎉",color:"#D69E2E",group:"관계형",summary:"어디에 있든 에너지와 웃음을 나눠주는 선생님입니다.",gift:"아이들이 교회 오는 것을 기대하게 만드는 힘이 있습니다.",serve:"처음 온 아이에게 가장 먼저 다가갈 수 있는 분입니다.",grow:"여러 가지를 동시에 시작하다가 마무리가 약해질 수 있습니다.",together:"ISTJ·ISFJ처럼 묵묵히 마무리하는 선생님과 짝을 이루면 서로를 완성시켜 줍니다."},
+  ISTJ:{name:"신뢰의 기둥",emoji:"🏛️",color:"#2B6CB0",group:"실행형",summary:"묵묵하고 꾸준하게 팀의 기초를 세우는 선생님입니다.",gift:"맡은 자리에서 흔들리지 않는 신뢰를 줍니다.",serve:"누군가 해야 할 일인데 아무도 안 할 때 조용히 먼저 하는 분입니다.",grow:"변화에 적응하는 데 시간이 필요할 수 있습니다.",together:"ENFP·ENTP처럼 아이디어가 풍부한 선생님과 함께하면 창의성에 안정이 더해집니다."},
+  ISFJ:{name:"조용한 섬김이",emoji:"🛡️",color:"#276749",group:"실행형",summary:"누가 보지 않아도 아이들과 팀을 위해 최선을 다하는 선생님입니다.",gift:"아이들 한 명 한 명의 이름, 특성, 필요를 기억하고 세심하게 챙깁니다.",serve:"말보다 행동으로 사랑을 표현합니다.",grow:"자신의 수고와 감정을 잘 드러내지 않아 주위에서 모르고 지나칠 수 있습니다.",together:"ENFJ·ENFP처럼 에너지 넘치는 선생님과 함께하면 조용한 섬김에 생동감이 더해집니다."},
+  ESTJ:{name:"든든한 실행자",emoji:"📋",color:"#744210",group:"실행형",summary:"계획을 세우고 책임지며 끝까지 이루어내는 선생님입니다.",gift:"행사 기획, 역할 분담, 준비 점검 등 팀이 체계적으로 움직이도록 중심을 잡아줍니다.",serve:"영아부가 매주 안정적으로 운영되는 데 가장 큰 기여를 합니다.",grow:"원칙과 효율을 중시하다 보면 유연성이 부족하게 느껴질 수 있습니다.",together:"INFP·ISFP처럼 감성적인 선생님과 함께하면 실행력에 따뜻함이 더해집니다."},
+  ESFJ:{name:"화목을 만드는 사람",emoji:"🤝",color:"#C05621",group:"실행형",summary:"팀의 화합과 따뜻한 분위기를 자연스럽게 만들어가는 선생님입니다.",gift:"누구도 소외되지 않도록 살피는 눈이 있습니다.",serve:"공동체의 따뜻함을 유지하는 실질적인 일들을 잘 합니다.",grow:"갈등을 피하려다 중요한 말을 못 할 때가 있습니다.",together:"INTJ·INTP처럼 원칙을 중시하는 선생님과 함께하면 따뜻함에 방향이 더해집니다."},
+  ISTP:{name:"현장의 전문가",emoji:"🔧",color:"#4A5568",group:"도전형",summary:"말보다 행동으로, 이론보다 현장에서 빛나는 선생님입니다.",gift:"문제가 생겼을 때 당황하지 않고 즉시 해결책을 찾습니다.",serve:"조용하지만 결정적인 순간에 팀을 살리는 실력을 발휘합니다.",grow:"혼자 해결하려는 경향 때문에 팀이 함께 나눌 기회를 놓칠 수 있습니다.",together:"ENFJ·ESFJ처럼 사람을 잘 챙기는 선생님과 함께하면 실력에 따뜻함이 더해집니다."},
+  ISFP:{name:"곁에 있는 사람",emoji:"🌸",color:"#B83280",group:"도전형",summary:"말없이 옆에서 아이들의 마음을 어루만지는 선생님입니다.",gift:"아이들이 편안하게 느낄 수 있도록 조용히 곁에 있어주는 능력이 있습니다.",serve:"함께하는 시간 자체로 아이들에게 위로와 안정을 줍니다.",grow:"자신을 표현하는 데 어려움을 느낄 수 있습니다.",together:"ENTJ·ESTJ처럼 방향을 잡아주는 선생님과 함께하면 따뜻함이 목표를 향해 흘러갑니다."},
+  ESTP:{name:"현재를 살아가는 사람",emoji:"🚀",color:"#C05621",group:"도전형",summary:"지금 이 순간 최선을 다하는 에너지 넘치는 선생님입니다.",gift:"돌발 상황에 강하고, 아이들과 즉흥적으로 어울리는 능력이 탁월합니다.",serve:"아이들과 몸으로 뛰고 함께 웃으며 교회가 즐겁다는 경험을 만들어줍니다.",grow:"장기적인 계획보다 지금에 집중하다 보면 준비가 부족할 수 있습니다.",together:"INFJ·ISFJ처럼 세심하게 준비하는 선생님과 함께하면 에너지에 깊이가 더해집니다."},
+  ESFP:{name:"기쁨을 나누는 사람",emoji:"🎭",color:"#D69E2E",group:"도전형",summary:"아이들에게 교회가 기쁜 곳임을 온몸으로 보여주는 선생님입니다.",gift:"웃음과 활기로 아이들이 교회를 기대하게 만듭니다.",serve:"예배·간식·놀이 시간 어디서든 아이들의 웃음 소리를 만들어냅니다.",grow:"즉흥적인 성격 덕에 준비가 가끔 부족할 수 있습니다.",together:"ISTJ·ISFJ처럼 꼼꼼하게 준비하는 선생님과 함께하면 기쁨이 더 오래 지속됩니다."}
+};
+
+const AXIS_TEAM = {
+  EE:{title:"활기찬 소통이 넘치는 팀",icon:"🗣️",text:"외향적 에너지가 풍부한 팀입니다. 함께 모이면 자연스럽게 대화가 피어납니다. 내향적인 선생님의 깊은 생각도 충분히 나올 수 있도록 조용한 나눔 시간을 의도적으로 만들어가면 더욱 풍성해집니다.",serve:"팀 모임을 활기차게 이끌고 서로의 이야기를 나누는 문화를 자연스럽게 만들어갑니다."},
+  II:{title:"사려 깊고 진중한 팀",icon:"🤲",text:"차분하고 깊이 있게 아이들을 섬기는 팀입니다. 한 아이 한 아이를 집중해서 바라보는 섬세함이 강점입니다.",serve:"조용하지만 깊은 헌신으로 아이들과 팀 모두를 안정되게 품어줍니다."},
+  EI:{title:"다양한 에너지가 균형을 이루는 팀",icon:"⚖️",text:"외향적·내향적 선생님이 고루 섞여 서로를 보완하는 아름다운 팀입니다.",serve:"에너지를 나누는 사람과 깊이를 더하는 사람이 서로의 빈자리를 채워줍니다."},
+  SS:{title:"현실적이고 꼼꼼한 섬김의 팀",icon:"🔍",text:"구체적이고 실질적인 섬김을 잘하는 팀입니다. 아이들의 실제 필요를 파악하고 꼼꼼히 챙기는 데 강점이 있습니다.",serve:"매주 안정적이고 신뢰할 수 있는 환경을 아이들에게 제공합니다."},
+  NN:{title:"비전과 창의가 넘치는 팀",icon:"🔮",text:"새로운 아이디어와 가능성을 잘 보는 팀입니다. 아이들을 위한 창의적인 활동을 만들고 영아부의 미래를 그려가는 데 탁월합니다.",serve:"영아부가 더 나아질 수 있다는 비전을 품고 새로운 시도를 두려워하지 않습니다."},
+  SN:{title:"현실과 비전을 함께 보는 팀",icon:"🌉",text:"현장의 실질적 필요를 챙기는 선생님과 큰 그림을 그리는 선생님이 함께합니다.",serve:"지금 필요한 것을 채우면서 앞으로 나아갈 방향도 함께 고민합니다."},
+  TT:{title:"원칙과 기준이 명확한 팀",icon:"⚖️",text:"논리적이고 체계적으로 판단하는 팀입니다. 아이들과 동료를 향한 따뜻한 감정 표현도 사역의 중요한 부분임을 기억해주세요.",serve:"공정하고 일관된 기준으로 팀을 안정되게 운영합니다."},
+  FF:{title:"따뜻한 마음이 넘치는 팀",icon:"💛",text:"사람을 먼저 생각하고 관계를 소중히 여기는 팀입니다. 아이들이 '이곳은 사랑받는 곳'이라고 느끼게 하는 데 탁월합니다.",serve:"아이들과 동료 모두를 진심으로 품는 따뜻한 팀 문화를 만들어냅니다."},
+  TF:{title:"원칙과 따뜻함을 함께 갖춘 팀",icon:"🌿",text:"논리적인 판단과 감성적인 공감이 함께 있는 팀입니다. 분명하게 말해야 할 때와 먼저 들어야 할 때를 서로 보완하면서 채울 수 있습니다.",serve:"명확한 방향과 따뜻한 관계가 균형 있게 어우러집니다."},
+  JJ:{title:"철저하게 준비하는 팀",icon:"📅",text:"계획하고 준비하는 데 탁월한 팀입니다. 매주일 영아부가 안정적으로 운영될 수 있도록 미리 준비하고 점검하는 문화가 자연스럽습니다.",serve:"준비된 환경 속에서 아이들이 안정감 있게 예배하고 놀 수 있게 합니다."},
+  PP:{title:"유연하게 흘러가는 팀",icon:"🌊",text:"상황에 따라 유연하게 반응하는 팀입니다. 계획이 바뀌어도 당황하지 않고 그 순간 최선을 만들어냅니다.",serve:"예상 밖의 상황에서도 흔들리지 않고 그 순간을 아름답게 채워냅니다."},
+  JP:{title:"계획과 유연함이 공존하는 팀",icon:"🎯",text:"체계적으로 준비하는 선생님과 현장에서 유연하게 반응하는 선생님이 함께합니다.",serve:"구조와 자유가 함께 있어 안정적이면서도 살아있는 영아부를 만듭니다."}
+};
+
+const axColors={E:"#4A6FA5",I:"#9B59B6",S:"#3A7A55",N:"#A07820",T:"#2980B9",F:"#C0392B",J:"#7D5BD4",P:"#D47010"};
+
+let responses = [];
+let currentPage = "opening";
+let selected = "전체";
+
+function getAxisKey(a,b,va,vb){
+  if(va>vb*1.3) return a+a;
+  if(vb>va*1.3) return b+b;
+  return a+b;
+}
+function countAxis(rs){
+  const c={E:0,I:0,S:0,N:0,T:0,F:0,J:0,P:0};
+  rs.forEach(r=>{if(r.mbti)[...r.mbti].forEach(ch=>{if(c[ch]!==undefined)c[ch]++;});});
+  return c;
+}
+
+window.loadData = async function() {
+  try {
+    const snap = await get(ref(db,"responses"));
+    if(snap.exists()){
+      responses = Object.values(snap.val()).sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+    } else { responses=[]; }
+    const n=responses.length;
+    document.getElementById("count-badge").textContent=n+"/"+TEAM_SIZE+"명";
+    render();
+  } catch(e){console.error(e);}
+};
+
+window.togglePage = function(){
+  currentPage = currentPage==="opening"?"dashboard":"opening";
+  document.getElementById("page-btn").textContent = currentPage==="opening"?"결과 보기 →":"← 오프닝";
+  document.getElementById("page-btn").style.background = currentPage==="opening"?"#4A6FA5":"#C26A3A";
+  render();
+};
+
+window.selectPerson = function(name){
+  selected=name; render();
+};
+
+// Real-time listener
+import { onValue as fbOnValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+fbOnValue(ref(db,"responses"), snap=>{
+  responses = snap.exists()?Object.values(snap.val()).sort((a,b)=>a.name.localeCompare(b.name,"ko")):[];
+  document.getElementById("count-badge").textContent=responses.length+"/"+TEAM_SIZE+"명";
+  render();
+});
+
+// Reset (진행자용 - 비밀번호 확인)
+window.resetData = async function(){
+  const pw = prompt("초기화 비밀번호를 입력하세요:");
+  if(pw!=="영아부2025") return;
+  if(!confirm("테스트 데이터를 모두 삭제하시겠어요?")) return;
+  await remove(ref(db,"responses"));
+  alert("초기화 완료!");
+};
+
+function renderOpening(){
+  const n=responses.length;
+  const pct=Math.round((n/TEAM_SIZE)*100);
+  const TIPS=[
+    {icon:"💬",title:"정답이 없어요",text:"지금 내 모습과 가장 가까운 답을 고르세요."},
+    {icon:"⏱️",title:"직관적으로 답해요",text:"너무 오래 고민하지 마세요. 약 8분 소요됩니다."},
+    {icon:"🙏",title:"평소의 나로 답해요",text:"선생님으로서가 아닌, 평소 일상의 나를 기준으로."},
+    {icon:"🌱",title:"판단하지 마세요",text:"어떤 유형이 더 좋거나 나쁜 것이 아닙니다."}
+  ];
+  return `
+    <div class="hero">
+      <div class="hero-church">충신교회 영아부 워크샵</div>
+      <div class="hero-workshop">팀빌딩 · <span style="background:rgba(255,255,255,.18);border-radius:6px;padding:2px 10px;letter-spacing:3px">MBTI</span></div>
+      <div style="width:40px;height:1px;background:rgba(255,255,255,.3);margin:14px auto"></div>
+      <div class="hero-title">서로를 더 깊이<br>알아가는 시간 🌱</div>
+      <div class="hero-desc">각자의 다름이 어떻게 하나의 아름다운 팀을 이루는지,<br>함께 발견해봐요.</div>
+      <div class="hero-divider"></div>
+      <div class="verse-box">
+        <div class="verse-ref">로마서 12장 4–5절</div>
+        <div class="verse-text">"우리가 한 몸에 많은 지체를 가졌으나 모든 지체가 같은 기능을 가진 것이 아니니 이와 같이 우리 많은 사람이 그리스도 안에서 한 몸이 되어 서로 지체가 되었느니라"</div>
+      </div>
+      <div class="verse-box">
+        <div class="verse-ref">베드로전서 4장 10절</div>
+        <div class="verse-text">"각각 은사를 받은 대로 하나님의 여러 가지 은혜를 맡은 선한 청지기 같이 서로 봉사하라"</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="card">
+        <div class="card-label">실시간 참여 현황</div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+          <span style="font-size:48px;font-weight:900;line-height:1">${n}</span>
+          <span style="font-size:14px;color:#8C7F6E">/ ${TEAM_SIZE}명 완료 · ${pct}%</span>
+        </div>
+        <div style="height:8px;background:#F5F0E8;border-radius:4px;overflow:hidden;margin-bottom:12px">
+          <div style="height:100%;width:${pct}%;background:${pct>=80?"#3A7A55":pct>=50?"#A07820":"#C26A3A"};border-radius:4px;transition:width .5s"></div>
+        </div>
+        ${n>0?`<div style="display:flex;flex-wrap:wrap;gap:5px">${responses.map(r=>{const inf=MBTI_INFO[r.mbti];return`<span class="chip" style="background:${inf?inf.color+"18":"#F5F0E8"};border:1px solid ${inf?inf.color+"40":"#EDE8DF"}">${inf?.emoji||""} ${r.name} <strong style="color:${inf?.color||"#8C7F6E"}">${r.mbti}</strong></span>`}).join("")}</div>`:`<p style="font-size:13px;color:#8C7F6E;text-align:center;padding:10px 0">아직 응답이 없어요. 설문 링크를 공유해주세요 🙏</p>`}
+      </div>
+      <div class="card">
+        <div class="card-label">MBTI 란?</div>
+        <p style="font-size:14px;color:#4A5568;line-height:1.9;margin-bottom:14px">MBTI는 사람의 <strong>타고난 심리적 선호 방향</strong>을 파악하는 도구입니다. 어떤 유형이 더 좋거나 나쁜 것이 아니라, <strong>서로 다른 방식으로 세상을 보고 에너지를 쓴다</strong>는 것을 이해하는 데 도움을 줍니다.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">
+          ${[["에너지 방향","외향(E) — 사람들과 함께할 때 충전","내향(I) — 혼자만의 시간에 충전"],
+             ["정보 인식","감각(S) — 현재의 구체적 사실 중시","직관(N) — 가능성과 미래 패턴을 봄"],
+             ["의사결정","사고(T) — 논리와 객관적 기준","감정(F) — 관계와 감정을 중심으로"],
+             ["생활 방식","판단(J) — 계획적·체계적","인식(P) — 유연하고 상황 반응적"]
+          ].map(([lbl,a,b])=>`<div style="background:#F5F0E8;border-radius:10px;padding:12px 14px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:7px">${lbl}</div>
+            <div style="font-size:12px;color:#8C7F6E;line-height:1.7">• ${a}<br>• ${b}</div>
+          </div>`).join("")}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">설문 참여 요령</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+          ${TIPS.map(t=>`<div style="background:#F5F0E8;border-radius:10px;padding:13px 14px">
+            <div style="font-size:20px;margin-bottom:5px">${t.icon}</div>
+            <div style="font-size:13px;font-weight:700;color:#2D2A24;margin-bottom:4px">${t.title}</div>
+            <div style="font-size:12px;color:#8C7F6E;line-height:1.7">${t.text}</div>
+          </div>`).join("")}
+        </div>
+      </div>
+      <button onclick="togglePage()" style="width:100%;padding:15px;background:#4A6FA5;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;margin-bottom:8px">
+        📊 설문 결과 대시보드 보기 →
+      </button>
+      <button onclick="resetData()" style="width:100%;padding:11px;background:transparent;color:#C0392B;border:1.5px solid #C0392B;border-radius:12px;font-size:13px;cursor:pointer">
+        🗑️ 테스트 데이터 초기화 (진행자 전용)
+      </button>
+    </div>`;
+}
+
+function renderDashboard(){
+  const n=responses.length;
+  const axis=countAxis(responses);
+  const pct=Math.round((n/TEAM_SIZE)*100);
+  const typeCounts={};
+  responses.forEach(r=>{if(r.mbti)typeCounts[r.mbti]=(typeCounts[r.mbti]||0)+1;});
+
+  const selRow=`<div class="selector"><div class="sel-row">
+    <button class="sel-btn" onclick="selectPerson('전체')" style="border:1.5px solid ${selected==="전체"?"#C26A3A":"#EDE8DF"};background:${selected==="전체"?"#C26A3A":"#fff"};color:${selected==="전체"?"#fff":"#8C7F6E"};font-family:inherit">🌸 전체 영아부</button>
+    ${responses.map(r=>{const inf=MBTI_INFO[r.mbti];const a=selected===r.name;return`<button class="sel-btn" onclick="selectPerson('${r.name}')" style="border:1.5px solid ${a?(inf?.color||"#C26A3A"):"#EDE8DF"};background:${a?(inf?.color||"#C26A3A"):"#fff"};color:${a?"#fff":"#8C7F6E"};font-family:inherit">${inf?.emoji||"👤"} ${r.name}</button>`}).join("")}
+  </div></div>`;
+
+  if(selected==="전체"){
+    if(n===0) return selRow+`<div class="section"><div class="card" style="text-align:center;padding:40px"><div style="font-size:36px;margin-bottom:12px">🌱</div><div style="font-size:14px;color:#8C7F6E">아직 응답이 없어요.<br>오프닝 화면에서 링크를 공유해주세요.</div></div></div>`;
+
+    const domE=axis.E>=axis.I?"E":"I", domS=axis.S>=axis.N?"S":"N", domT=axis.T>=axis.F?"T":"F", domJ=axis.J>=axis.P?"J":"P";
+    const eiI=AXIS_TEAM[getAxisKey("E","I",axis.E,axis.I)];
+    const snI=AXIS_TEAM[getAxisKey("S","N",axis.S,axis.N)];
+    const tfI=AXIS_TEAM[getAxisKey("T","F",axis.T,axis.F)];
+    const jpI=AXIS_TEAM[getAxisKey("J","P",axis.J,axis.P)];
+
+    return selRow+`<div class="section">
+      <div class="card">
+        <div class="card-label">설문 완료 현황</div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+          <span style="font-size:44px;font-weight:900;line-height:1">${n}</span>
+          <span style="font-size:14px;color:#8C7F6E">/ ${TEAM_SIZE}명 · ${pct}%</span>
+        </div>
+        <div style="height:8px;background:#F5F0E8;border-radius:4px;overflow:hidden;margin-bottom:10px">
+          <div style="height:100%;width:${pct}%;background:${pct>=80?"#3A7A55":"#A07820"};border-radius:4px;transition:width .5s"></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">${responses.map(r=>{const inf=MBTI_INFO[r.mbti];return`<span class="chip" onclick="selectPerson('${r.name}')" style="cursor:pointer;background:${inf?inf.color+"18":"#F5F0E8"};border:1px solid ${inf?inf.color+"40":"#EDE8DF"}">${inf?.emoji||""} ${r.name} <strong style="color:${inf?.color||"#8C7F6E"}">${r.mbti}</strong></span>`}).join("")}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">영아부 성향 분포</div>
+        ${[["E","I","에너지"],["S","N","인식"],["T","F","판단"],["J","P","생활방식"]].map(([a,b,lbl])=>{
+          const tot=(axis[a]||0)+(axis[b]||0)||1, pa=Math.round((axis[a]/tot)*100);
+          return`<div class="bar-row">
+            <div class="bar-labels"><span style="color:${axColors[a]};font-weight:600">${a} · ${pa}%</span><span style="color:#8C7F6E">${lbl}</span><span style="color:${axColors[b]};font-weight:600">${b} · ${100-pa}%</span></div>
+            <div class="bar-track"><div style="width:${pa}%;background:${axColors[a]}"></div><div style="flex:1;background:${axColors[b]}"></div></div>
+          </div>`;}).join("")}
+      </div>
+      <div class="card">
+        <div class="card-label">MBTI 유형 분포</div>
+        <div class="type-grid">${Object.entries(MBTI_INFO).map(([type,inf])=>{const cnt=typeCounts[type]||0;return`<div style="background:${cnt>0?inf.color+"18":"#F5F0E8"};border:1px solid ${cnt>0?inf.color+"50":"#EDE8DF"};border-radius:10px;padding:8px 10px;min-width:68px;text-align:center;opacity:${cnt>0?1:.4}"><div style="font-size:16px">${inf.emoji}</div><div style="font-size:12px;font-weight:900;color:${cnt>0?inf.color:"#8C7F6E"};letter-spacing:1px">${type}</div><div style="font-size:10px;color:#8C7F6E">${inf.name}</div>${cnt>0?`<div style="font-size:13px;font-weight:700;color:${inf.color};margin-top:2px">${cnt}명</div>`:""}</div>`}).join("")}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">영아부 팀 인사이트</div>
+        <div style="font-size:22px;font-weight:900;color:#4A6FA5;letter-spacing:4px;margin-bottom:4px">${domE+domS+domT+domJ} 팀</div>
+        <div class="divider"></div>
+        ${[eiI,snI,tfI,jpI].map((info,i)=>info?`<div style="margin-bottom:${i<3?16:0}px">
+          <div style="font-size:14px;font-weight:700;color:#2D2A24;margin-bottom:5px">${info.icon} ${info.title}</div>
+          <p style="font-size:13px;color:#8C7F6E;line-height:1.85;margin:0 0 5px">${info.text}</p>
+          <div style="font-size:12px;color:#3A7A55;font-style:italic">💚 섬김의 강점: ${info.serve}</div>
+          ${i<3?`<div class="divider"></div>`:""}
+        </div>`:"").join("")}
+      </div>
+      <div class="card">
+        <div class="card-label">선생님들 MBTI 카드</div>
+        <div class="member-grid">${responses.map(r=>{const inf=MBTI_INFO[r.mbti]||{color:"#8C7F6E",emoji:"❓",name:""};return`<div class="m-card" style="border:1.5px solid ${inf.color}40" onclick="selectPerson('${r.name}')"><div style="font-size:18px;margin-bottom:2px">${inf.emoji}</div><div style="font-size:13px;font-weight:900;color:${inf.color};letter-spacing:2px">${r.mbti}</div><div style="font-size:12px;font-weight:700;color:#2D2A24;margin-top:1px">${r.name}</div><div style="font-size:10px;color:#8C7F6E">${r.dept}</div></div>`}).join("")}</div>
+      </div>
+    </div>`;
+  } else {
+    const person=responses.find(r=>r.name===selected);
+    const info=person?MBTI_INFO[person.mbti]:null;
+    if(!person||!info) return selRow+`<div class="section"><div class="card" style="text-align:center;padding:30px"><div style="font-size:13px;color:#8C7F6E">아직 응답이 없습니다.</div></div></div>`;
+    const col=info.color;
+    const ax2=[["E","I","에너지 방향"],["S","N","정보 인식"],["T","F","의사결정"],["J","P","생활 방식"]];
+    return selRow+`<div class="section">
+      <div class="card" style="text-align:center">
+        <div style="font-size:42px;margin-bottom:8px">${info.emoji}</div>
+        <div style="font-size:48px;font-weight:900;color:${col};letter-spacing:6px;margin-bottom:4px">${person.mbti}</div>
+        <div style="font-size:17px;color:#8C7F6E;margin-bottom:10px">${info.name}</div>
+        <div style="font-size:15px;font-weight:700;color:#2D2A24;margin-bottom:3px">${person.name} 선생님</div>
+        <div style="font-size:12px;color:#8C7F6E;margin-bottom:12px">${person.dept}</div>
+        <div style="font-size:14px;color:#8C7F6E;line-height:1.85;max-width:360px;margin:0 auto">${info.summary}</div>
+      </div>
+      <div class="card">
+        <div class="ibox" style="background:${col}12;border-left:3px solid ${col}"><div class="ibox-lbl" style="color:${col}">🌱 은사와 강점</div><div class="ibox-txt">${info.gift}</div></div>
+        <div class="ibox" style="background:#4A6FA512;border-left:3px solid #4A6FA5"><div class="ibox-lbl" style="color:#4A6FA5">🙌 영아부에서의 섬김 방식</div><div class="ibox-txt">${info.serve}</div></div>
+        <div class="ibox" style="background:#A0782012;border-left:3px solid #A07820"><div class="ibox-lbl" style="color:#A07820">🌿 함께 성장할 부분</div><div class="ibox-txt">${info.grow}</div></div>
+        <div class="ibox" style="background:#C26A3A12;border-left:3px solid #C26A3A"><div class="ibox-lbl" style="color:#C26A3A">🤝 시너지 파트너</div><div class="ibox-txt">${info.together}</div></div>
+      </div>
+      <div class="card">
+        <div class="card-label">성향 상세</div>
+        ${ax2.map(([a,b,lbl],idx)=>{const ch=person.mbti[idx];return`<div class="bar-row">
+          <div class="bar-labels"><span style="color:${ch===a?axColors[a]:"#EDE8DF"};font-weight:${ch===a?700:400}">${a}</span><span style="color:#8C7F6E">${lbl}</span><span style="color:${ch===b?axColors[b]:"#EDE8DF"};font-weight:${ch===b?700:400}">${b}</span></div>
+          <div class="bar-track"><div style="width:${ch===a?100:0}%;background:${axColors[a]}"></div><div style="width:${ch===b?100:0}%;background:${axColors[b]}"></div></div>
+        </div>`;}).join("")}
+      </div>
+    </div>`;
+  }
+}
+
+function render(){
+  document.getElementById("app").innerHTML = currentPage==="opening"?renderOpening():renderDashboard();
+}
+
+render();
+</script>
+</body>
+</html>
