@@ -52,8 +52,8 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#FD
   <div style="display:flex;align-items:center;gap:8px">
     <div class="live"><div class="dot"></div>LIVE</div>
     <div id="count-badge" style="background:#F5F0E8;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700">0/20명</div>
-    <button class="nav-btn" id="page-btn" onclick="togglePage()" style="background:#4A6FA5;color:#fff">결과 보기 →</button>
-    <button class="nav-btn" onclick="loadData()" style="background:transparent;border:1px solid #EDE8DF;color:#8C7F6E">↻</button>
+    <button class="nav-btn" id="page-btn" onclick="window.togglePage()" style="background:#4A6FA5;color:#fff">결과 보기 →</button>
+    <button class="nav-btn" onclick="window.loadData()" style="background:transparent;border:1px solid #EDE8DF;color:#8C7F6E">↻</button>
   </div>
 </div>
 
@@ -162,10 +162,16 @@ fbOnValue(ref(db,"responses"), snap=>{
 // Reset (진행자용 - 비밀번호 확인)
 window.resetData = async function(){
   const pw = prompt("초기화 비밀번호를 입력하세요:");
-  if(pw!=="영아부2025") return;
-  if(!confirm("테스트 데이터를 모두 삭제하시겠어요?")) return;
-  await remove(ref(db,"responses"));
-  alert("초기화 완료!");
+  if(pw === null) return; // 취소
+  if(pw !== "영아부2025") { alert("비밀번호가 틀렸습니다."); return; }
+  if(!confirm("테스트 데이터를 모두 삭제하시겠어요?\n이 작업은 되돌릴 수 없습니다.")) return;
+  try {
+    await remove(ref(db,"responses"));
+    alert("✅ 초기화 완료!\n대시보드가 자동으로 갱신됩니다.");
+  } catch(e) {
+    alert("오류가 발생했습니다: " + e.message);
+    console.error(e);
+  }
 };
 
 function renderOpening(){
@@ -230,10 +236,10 @@ function renderOpening(){
           </div>`).join("")}
         </div>
       </div>
-      <button onclick="togglePage()" style="width:100%;padding:15px;background:#4A6FA5;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;margin-bottom:8px">
+      <button onclick="window.togglePage()" style="width:100%;padding:15px;background:#4A6FA5;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;margin-bottom:8px">
         📊 설문 결과 대시보드 보기 →
       </button>
-      <button onclick="resetData()" style="width:100%;padding:11px;background:transparent;color:#C0392B;border:1.5px solid #C0392B;border-radius:12px;font-size:13px;cursor:pointer">
+      <button onclick="window.resetData()" style="width:100%;padding:11px;background:transparent;color:#C0392B;border:1.5px solid #C0392B;border-radius:12px;font-size:13px;cursor:pointer">
         🗑️ 테스트 데이터 초기화 (진행자 전용)
       </button>
     </div>`;
@@ -367,6 +373,31 @@ function render(){
 }
 
 render();
+</script>
+
+<!-- 다운로드 버튼 (진행자 전용 고정 하단) -->
+<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #EDE8DF;padding:10px 16px;display:flex;gap:8px;z-index:200">
+  <a id="btn-dashboard" download="dashboard.html"
+     style="flex:1;padding:11px;background:#3A5A8A;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none">
+    ⬇️ 대시보드 저장
+  </a>
+  <a id="btn-survey" href="survey.html" download="survey.html"
+     style="flex:1;padding:11px;background:#276749;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none">
+    ⬇️ 설문 저장
+  </a>
+</div>
+
+<script>
+// 현재 dashboard.html 페이지 자체를 blob으로 다운로드
+document.getElementById("btn-dashboard").addEventListener("click", function(e){
+  e.preventDefault();
+  const html = "<!DOCTYPE html>" + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type:"text/html;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "dashboard.html";
+  a.click(); URL.revokeObjectURL(url);
+});
 </script>
 </body>
 </html>
