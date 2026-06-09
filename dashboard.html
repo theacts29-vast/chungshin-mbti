@@ -306,7 +306,8 @@ function renderDashboard(){
     const info=person?MBTI_INFO[person.mbti]:null;
     if(!person||!info) return selRow+`<div class="section"><div class="card" style="text-align:center;padding:30px"><div style="font-size:13px;color:#8C7F6E">아직 응답이 없습니다.</div></div></div>`;
     const col=info.color;
-    const ax2=[["E","I","에너지 방향"],["S","N","정보 인식"],["T","F","의사결정"],["J","P","생활 방식"]];
+    const ax2=[["E","I","에너지 방향","외향","내향"],["S","N","정보 인식","감각","직관"],["T","F","의사결정","사고","감정"],["J","P","생활 방식","판단","인식"]];
+    const sc = person.scores || null;
     return selRow+`<div class="section">
       <div class="card" style="text-align:center">
         <div style="font-size:42px;margin-bottom:8px">${info.emoji}</div>
@@ -324,10 +325,38 @@ function renderDashboard(){
       </div>
       <div class="card">
         <div class="card-label">성향 상세</div>
-        ${ax2.map(([a,b,lbl],idx)=>{const ch=person.mbti[idx];return`<div class="bar-row">
-          <div class="bar-labels"><span style="color:${ch===a?axColors[a]:"#EDE8DF"};font-weight:${ch===a?700:400}">${a}</span><span style="color:#8C7F6E">${lbl}</span><span style="color:${ch===b?axColors[b]:"#EDE8DF"};font-weight:${ch===b?700:400}">${b}</span></div>
-          <div class="bar-track"><div style="width:${ch===a?100:0}%;background:${axColors[a]}"></div><div style="width:${ch===b?100:0}%;background:${axColors[b]}"></div></div>
-        </div>`;}).join("")}
+        ${ax2.map(([a,b,lbl,aName,bName],idx)=>{
+          let pa, pb;
+          if(sc && sc[a]!==undefined && sc[b]!==undefined) {
+            const tot=(sc[a]||0)+(sc[b]||0)||1;
+            pa=Math.round((sc[a]/tot)*100); pb=100-pa;
+          } else {
+            const ch=person.mbti[idx]; pa=ch===a?100:0; pb=100-pa;
+          }
+          const dominant=pa>=pb?a:b;
+          return`<div style="margin-bottom:18px">
+            <div style="font-size:11px;color:#8C7F6E;margin-bottom:6px;font-weight:600;letter-spacing:1px">${lbl}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="text-align:left">
+                <span style="font-size:18px;font-weight:900;color:${dominant===a?axColors[a]:"#CBD5E0"}">${a}</span>
+                <span style="font-size:13px;font-weight:700;color:${dominant===a?axColors[a]:"#CBD5E0"};margin-left:3px">${pa}%</span>
+                <div style="font-size:10px;color:${dominant===a?"#8C7F6E":"#CBD5E0"};margin-top:1px">${aName}</div>
+              </div>
+              <div style="text-align:right">
+                <span style="font-size:13px;font-weight:700;color:${dominant===b?axColors[b]:"#CBD5E0"};margin-right:3px">${pb}%</span>
+                <span style="font-size:18px;font-weight:900;color:${dominant===b?axColors[b]:"#CBD5E0"}">${b}</span>
+                <div style="font-size:10px;color:${dominant===b?"#8C7F6E":"#CBD5E0"};margin-top:1px;text-align:right">${bName}</div>
+              </div>
+            </div>
+            <div class="bar-track" style="height:12px;border-radius:6px">
+              <div style="width:${pa}%;background:${axColors[a]};border-radius:6px 0 0 6px;min-width:${pa>0?4:0}px"></div>
+              <div style="flex:1;background:${axColors[b]};border-radius:0 6px 6px 0;min-width:${pb>0?4:0}px"></div>
+            </div>
+            <div style="text-align:center;margin-top:5px;font-size:11px;color:#8C7F6E">
+              ${pa===pb?"균형잡힌 성향이에요":pa>pb?`${aName}(${a}) 성향이 더 강해요`:`${bName}(${b}) 성향이 더 강해요`}
+            </div>
+          </div>`;
+        }).join("")}
       </div>
     </div>`;
   }
